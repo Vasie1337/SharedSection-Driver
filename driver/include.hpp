@@ -8,20 +8,24 @@
 #include <ntstrsafe.h>
 #include <ntimage.h>
 
-// Source
+// C++
+#include <intrin.h>
+#include <xtr1common>
+
+// Project
 #include <defs.hpp>
 #include <shared.hpp>
 
-#include <impl/nt.hpp>
-#include <impl/crt.hpp>
-#include <impl/scanner.hpp>
-
-#include <kernel/ctx.hpp>
+#include <kernel/nt.hpp>
+#include <kernel/crt.hpp>
+#include <kernel/scanner.hpp>
 #include <kernel/modules.hpp>
 
-#include <physical/physical.hpp>
-#include <physical/pml4.hpp>
+#include <hide/offsets.hpp>
+#include <hide/ret.hpp>
+#include <hide/thread.hpp>
 
-#include <comm/registry/registry.hpp>
-#include <comm/requests.hpp>
+#include <kernel/physical/physical.hpp>
+#include <kernel/physical/cr3.hpp>
+
 #include <comm/comm.hpp>

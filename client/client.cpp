@@ -2,103 +2,174 @@
 
 #include <iostream>
 #include <windows.h>
+#include <signal.h>
+#include <signal.h>
+#include <chrono>
 
-namespace registry
+class Comm 
 {
-	bool create_key(const char* key, const char* value, void* data, size_t size)
+public:
+	bool Open()
 	{
-		HKEY hkey;
-		if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, key, 0, nullptr, 0, KEY_ALL_ACCESS, nullptr, &hkey, nullptr) != ERROR_SUCCESS)
-			return false;
+		target_pid = 1856;
 
-		if (RegSetValueExA(hkey, value, 0, REG_BINARY, (BYTE*)data, size) != ERROR_SUCCESS)
+		section_handle = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(shared_data), "Global\\SharedData");
+		if (!section_handle)
 		{
-			RegCloseKey(hkey);
+			std::cout << "Failed to create section: " << GetLastError() << std::endl;
+			return 1;
+		}
+
+		shared_section = reinterpret_cast<shared_data*>(MapViewOfFile(section_handle, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(shared_data)));
+		if (!shared_section)
+		{
+			std::cout << "Failed to map view of section: " << GetLastError() << std::endl;
+			CloseHandle(section_handle);
 			return false;
 		}
 
-		RegCloseKey(hkey);
-		return true;
-	}
-}
-
-namespace shared_memory
-{
-	PSHARED_DATA mem = nullptr;
-
-	bool create()
-	{
-		mem = reinterpret_cast<PSHARED_DATA>(VirtualAlloc(
-			nullptr,
-			sizeof(SHARED_DATA),
-			MEM_COMMIT | MEM_RESERVE, 
-			PAGE_READWRITE
-		));
-		if (!mem)
+		if (!OpenEvents())
+		{
 			return false;
+		}
 
-		unsigned long current_pid = GetCurrentProcessId();
-
-		if (!registry::create_key("Software\\shared_memory", "pid", &current_pid, sizeof(unsigned long)))
-			return false;
-
-		if (!registry::create_key("Software\\shared_memory", "address", &mem, sizeof(void*)))
-			return false;
+		Initialize();
 
 		return true;
 	}
 
-	void resolve_dtb()
+	void Close()
 	{
-		mem->magic = 0x74;
-		mem->type = comm_type::dirbase;
-		mem->pid = GetCurrentProcessId();
-		mem->delivered = false;
+		shared_section->type = comm_type::destory;
 
-		while (!mem->delivered)
-			Sleep(1);
+		SetEvent(event_handle);
+		WaitForSingleObject(event_handle_response, INFINITE);
+
+		UnmapViewOfFile(shared_section);
+		CloseHandle(section_handle);
+		CloseHandle(event_handle);
 	}
 
-	void read(UINT64 address, UINT64 buffer, SIZE_T size)
+	std::uint64_t GetCr3()
 	{
-		mem->magic = 0x74;
-		mem->type = comm_type::read;
-		mem->pid = GetCurrentProcessId();
-		mem->address = address;
-		mem->buffer = buffer;
-		mem->size = size;
+		shared_section->type = comm_type::cr3;
+		shared_section->process_id = target_pid;
 
-		mem->delivered = false;
+		SetEvent(event_handle);
+		WaitForSingleObject(event_handle_response, INFINITE);
 
-		while (!mem->delivered)
-			Sleep(1);
+		return shared_section->buffer;
 	}
-}
+
+	std::uint64_t GetBase()
+	{
+		shared_section->type = comm_type::base;
+		shared_section->process_id = target_pid;
+
+		SetEvent(event_handle);
+		WaitForSingleObject(event_handle_response, INFINITE);
+
+		return shared_section->buffer;
+	}
+
+	bool ReadPhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t Size)
+	{
+		shared_section->type = comm_type::read_physical;
+		shared_section->process_id = target_pid;
+		shared_section->address = Address;
+		shared_section->buffer = reinterpret_cast<std::uint64_t>(Buffer);
+		shared_section->size = Size;
+
+		SetEvent(event_handle);
+		WaitForSingleObject(event_handle_response, INFINITE);
+
+		return true;
+	}
+
+	bool WritePhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t Size)
+	{
+		shared_section->type = comm_type::write_physical;
+		shared_section->process_id = target_pid;
+		shared_section->address = Address;
+		shared_section->buffer = reinterpret_cast<std::uint64_t>(Buffer);
+		shared_section->size = Size;
+
+		SetEvent(event_handle);
+		WaitForSingleObject(event_handle_response, INFINITE);
+
+		return true;
+	}
+
+	template <typename T>
+	T Read(std::uint64_t Address, std::size_t Size = sizeof(T))
+	{
+		T Buffer{};
+		ReadPhysicalMemory(Address, &Buffer, Size);
+		return Buffer;
+	}
+
+	template <typename T>
+	bool Write(std::uint64_t Address, T Value)
+	{
+		return WritePhysicalMemory(Address, &Value, sizeof(T));
+	}
+
+private:
+	void Initialize()
+	{
+		shared_section->type = comm_type::init;
+		shared_section->process_id = GetCurrentProcessId();
+
+		SetEvent(event_handle);
+		WaitForSingleObject(event_handle_response, INFINITE);
+	}
+	
+	bool OpenEvents()
+	{
+		event_handle = CreateEventA(NULL, FALSE, FALSE, "Global\\SharedMemEvent");
+		if (!event_handle)
+		{
+			std::cout << "Failed to open event: " << GetLastError() << std::endl;
+			return false;
+		}
+
+		event_handle_response = CreateEventA(NULL, FALSE, FALSE, "Global\\SharedMemEventResponse");
+		if (!event_handle_response)
+		{
+			std::cout << "Failed to open response event: " << GetLastError() << std::endl;
+			return false;
+		}
+		return true;
+	}
+
+	long target_pid{};
+
+	shared_data* shared_section{};
+	HANDLE section_handle{};
+
+	HANDLE event_handle{};
+	HANDLE event_handle_response{};
+};
+
+Comm comm{};
 
 int main() 
 {
-	if (!shared_memory::create())
+	if (!comm.Open())
 	{
-		std::cout << "Failed to create shared memory" << std::endl;
+		std::cout << "Failed to open communication" << std::endl;
 		return 1;
 	}
 
-	shared_memory::resolve_dtb();
+	std::uint64_t Base = comm.GetBase();
+	std::cout << "Base: " << std::hex << Base << std::endl;
 
-	std::cout << "Resolved DTB" << std::endl;
+	std::uint64_t Cr3 = comm.GetCr3();
+	std::cout << "Cr3: " << std::hex << Cr3 << std::endl;
 
-	//int sample = 1337;
-	//int buffer = 0;
-	//
-	//shared_memory::read(
-	//	reinterpret_cast<UINT64>(&sample), 
-	//	reinterpret_cast<UINT64>(&buffer), 
-	//	sizeof(int)
-	//);
-	//
-	//std::cout << "Read: " << buffer << std::endl;
 
-	getchar();
+
+	comm.Close();
 
 	return 0;
 }

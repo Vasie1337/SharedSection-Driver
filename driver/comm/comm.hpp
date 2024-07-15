@@ -1,163 +1,362 @@
 #pragma once
 #include <include.hpp>
 
-namespace comm
+using namespace return_spoofer;
+
+class comm 
 {
-	inline void* SharedDataAddress = nullptr;
-	inline unsigned long ClientPid = 0;
-	inline PEPROCESS ClientProcess = nullptr;
+public:
 
-	inline PKTIMER timer;
-	inline PKDPC dpc;
-
-	SHARED_DATA ReadData()
+	// Open shared section
+	static NTSTATUS Open()
 	{
-		SHARED_DATA Data{};
-		SIZE_T Bytes{};
-		NTSTATUS Status = MmCopyVirtualMemory(ClientProcess, SharedDataAddress, PsGetCurrentProcess(), &Data, sizeof(Data), KernelMode, &Bytes);
-		if (Status != STATUS_SUCCESS)
-		{
-			printf("Failed to copy memory: 0x%X\n", Status);
-			return SHARED_DATA();
-		}
-		return Data;
-	}
+		InitStrings();
 
-	void WriteData(SHARED_DATA Data)
-	{
-		SIZE_T Bytes{};
-		NTSTATUS Status = MmCopyVirtualMemory(PsGetCurrentProcess(), &Data, ClientProcess, SharedDataAddress, sizeof(Data), KernelMode, &Bytes);
-		if (Status != STATUS_SUCCESS)
-		{
-			printf("Failed to copy memory: 0x%X\n", Status);
-		}
-	}
+		OBJECT_ATTRIBUTES ObjectAttributes{};
+		InitializeObjectAttributes(&ObjectAttributes,
+			&SectionName,
+			OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE,
+			NULL,
+			NULL
+		);
 
-	NTSTATUS HandleData(SHARED_DATA* Data)
-	{
-		switch (Data->type)
-		{
-		case comm_type::test:
-		{
-			printf("Received test\n");
-			return STATUS_SUCCESS;
-		}
-		case comm_type::read:
-		{
-			printf("Received read\n");
-			return requests::ReadMemory(Data);
-		}
-		case comm_type::write:
-		{
-			printf("Received write\n");
-			return requests::WriteMemory(Data);
-		}
-		//case comm_type::base:
-		//{
-		//	printf("Received base\n");
-		//	return requests::ResolveBase(Data);
-		//}
-		case comm_type::dirbase:
-		{
-			printf("Received dirbase\n");
-			return requests::ResolveDirBase(Data);
-		}
-		default:
-		{
-			printf("Unknown type\n");
-		}
-		}
-	}
-
-	VOID Routine(_KDPC* Dpc, PVOID DeferredContext, PVOID SystemArgument1, PVOID SystemArgument2)
-	{
-		ctx::Sleep(1);
-		printf("Routine\n");
-
-		auto Data = ReadData();
-		if (!Data.IsValid())
-		{
-			KeCancelTimer(timer);
-			ObDereferenceObject(ClientProcess);
-			return;
-		}
-		if (!Data.delivered)
-		{
-			HandleData(&Data);
-			Data.delivered = true;
-			WriteData(Data);
-		}
-
-		LARGE_INTEGER DueTime{};
-		DueTime.QuadPart = -10000;
-		KeSetTimerEx(timer, DueTime, 1, dpc);
-	}
-
-	bool Initialize()
-	{
-		if (!registry::read_key(L"\\Registry\\Machine\\Software\\shared_memory", L"pid", &ClientPid, sizeof(unsigned long)))
-		{
-			printf("Failed to read client PID\n");
-			return false;
-		}
-
-		if (!registry::read_key(L"\\Registry\\Machine\\Software\\shared_memory", L"address", &SharedDataAddress, sizeof(void*)))
-		{
-			printf("Failed to read shared memory address\n");
-			return false;
-		}
-
-		if (!ClientPid || !SharedDataAddress)
-		{
-			printf("Invalid shared memory\n");
-			return false;
-		}
-
-		NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(ClientPid), &ClientProcess);
+		Status = ZwOpenSection(
+			&SectionHandle,
+			SECTION_MAP_READ | SECTION_QUERY,
+			&ObjectAttributes
+		);
 		if (!NT_SUCCESS(Status))
 		{
-			printf("Failed to lookup process: 0x%X\n", Status);
+			printf("Failed to open section: 0x%X\n", Status);
+			Cleanup();
+			return Status;
+		}
+
+		PVOID SectionObject{};
+		Status = ObReferenceObjectByHandle(
+			SectionHandle,
+			SECTION_MAP_READ | SECTION_QUERY,
+			MmSectionObjectType,
+			KernelMode,
+			&SectionObject,
+			nullptr
+		);
+		if (!NT_SUCCESS(Status))
+		{
+			printf("Failed to reference object by handle: 0x%X\n", Status);
+			Cleanup();
+			return Status;
+		}
+
+		Status = MmMapViewInSystemSpace(
+			SectionObject, 
+			&MappedBase, 
+			&MappedSize
+		);
+		if (!NT_SUCCESS(Status))
+		{
+			printf("Failed to map view in system space: 0x%X\n", Status);
+			Cleanup();
+			return Status;
+		}
+
+		Status = OpenEvents();
+		if (!NT_SUCCESS(Status))
+		{
+			printf("Failed to open event: 0x%X\n", Status);
+			Cleanup();
+			return Status;
+		}
+		printf("Event handle: 0x%p\n", EventHandle);
+
+		HANDLE ThreadHandle{};
+		Status = PsCreateSystemThread(
+			&ThreadHandle, 
+			0, 
+			0, 
+			0, 
+			0, 
+			Handler, 
+			0
+		);
+		if (!NT_SUCCESS(Status))
+		{
+			printf("Failed to create system thread: 0x%X\n", Status);
+			Cleanup();
+			return Status;
+		}
+
+		ZwClose(ThreadHandle);
+		return STATUS_SUCCESS;
+	}
+
+private:
+
+	// Events
+	static NTSTATUS OpenEvents()
+	{
+		Event = IoCreateNotificationEvent(&EventName, &EventHandle);
+		if (!Event)
+		{
+			printf("Failed to create event\n");
+			return STATUS_UNSUCCESSFUL;
+		}
+
+		EventResponse = IoCreateNotificationEvent(&EventResponseName, &EventResponseHandle);
+		if (!EventResponse)
+		{
+			printf("Failed to create event response\n");
+			return STATUS_UNSUCCESSFUL;
+		}
+
+		return STATUS_SUCCESS;
+	}
+
+	// Packet handler thread	
+	static void Handler(void* Context) 
+	{
+		auto* Data = reinterpret_cast<shared_data*>(MappedBase);
+		if (!Init(Data))
+		{
+			printf("Failed to initialize\n");
+			goto DESTROY_AND_CLEANUP;
+		}
+		
+		if (!thread::Hide())
+		{
+			printf("Failed to hide thread\n");
+			goto DESTROY_AND_CLEANUP;
+		}
+
+		while (true)
+		{
+			KeWaitForSingleObject(Event, Executive, KernelMode, FALSE, 0);
+
+			PEPROCESS TargetProcess{};
+			NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
+			if (!NT_SUCCESS(Status))
+			{
+				printf("Failed to lookup process by process id: 0x%X\n", Status);
+				continue;
+			}
+
+			if (Data->size > CachePoolSize)
+			{
+				if (CachePool)
+				{
+					ExFreePool(CachePool);
+				}
+
+				CachePool = ExAllocatePool(NonPagedPoolNx, Data->size);
+				if (!CachePool)
+				{
+					printf("Failed to allocate pool\n");
+					continue;
+				}
+
+				CachePoolSize = Data->size;
+			}
+
+			switch (Data->type)
+			{
+				case comm_type::cr3:
+				{
+					const auto BaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(TargetProcess));
+					if (!BaseAddress)
+					{
+						printf("Failed to get base address\n");
+						break;
+					}
+					const auto DirBase = physical::cr3::GetFromBase(BaseAddress);
+					if (!DirBase)
+					{
+						printf("Failed to get DirBase\n");
+						break;
+					}
+
+					physical::cr3::StoredCr3 = DirBase;
+					Data->buffer = DirBase;
+					break;
+				}
+				case comm_type::base:
+				{
+					const auto BaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(TargetProcess));
+					if (!BaseAddress)
+					{
+						printf("Failed to get base address\n");
+						break;
+					}
+
+					Data->buffer = BaseAddress;
+					break;
+				}
+				case comm_type::read_physical:
+				{
+					physical::ReadMemory(physical::cr3::StoredCr3, reinterpret_cast<void*>(Data->address), CachePool, Data->size, &Data->size);
+					if (!Data->size)
+					{
+						printf("Failed to read memory\n");
+						break;
+					}
+					physical::WriteMemory(ClientCr3, reinterpret_cast<void*>(Data->buffer), CachePool, Data->size, &Data->size);
+					if (!Data->size)
+					{
+						printf("Failed to write memory\n");
+						break;
+					}
+					break;
+				}
+				case comm_type::write_physical:
+				{
+					physical::ReadMemory(ClientCr3, reinterpret_cast<void*>(Data->buffer), CachePool, Data->size, &Data->size);
+					if (!Data->size)
+					{
+						printf("Failed to read memory\n");
+						break;
+					}
+					physical::WriteMemory(physical::cr3::StoredCr3, reinterpret_cast<void*>(Data->address), CachePool, Data->size, &Data->size);
+					if (!Data->size)
+					{
+						printf("Failed to write memory\n");
+						break;
+					}
+					break;
+				}
+				case comm_type::destory:
+				{
+					printf("Received destory\n");
+					goto DESTROY_AND_CLEANUP;
+				}
+				case comm_type::init:
+				{
+					break;
+				}
+				default:
+				{
+					printf("Received unknown type\n");
+					break;
+				}
+			}
+
+			KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+		}
+
+DESTROY_AND_CLEANUP:
+		printf("Exiting thread\n");
+		Cleanup();
+		PsTerminateSystemThread(STATUS_SUCCESS);
+	}
+
+	// Init for client
+	static bool Init(shared_data* Data)
+	{
+		ClientPID = reinterpret_cast<HANDLE>(Data->process_id);
+		printf("Client PID: 0x%X\n", ClientPID);
+		if (!ClientPID)
+		{
+			printf("Invalid client pid\n");
 			return false;
 		}
 
-		timer = (PKTIMER)ExAllocatePool(NonPagedPool, sizeof(KTIMER));
-		dpc = (PKDPC)ExAllocatePool(NonPagedPool, sizeof(KDPC));
-
-		if (timer == NULL || dpc == NULL)
+		Status = PsLookupProcessByProcessId(ClientPID, &ClientProcess);
+		if (!NT_SUCCESS(Status))
 		{
-			if (timer) ExFreePool(timer);
-			if (dpc) ExFreePool(dpc);
-			return STATUS_INSUFFICIENT_RESOURCES;
+			printf("Failed to lookup client by process id: 0x%X\n", Status);
+			return false;
 		}
 
-		KeInitializeTimerEx(timer, NotificationTimer);
-		KeInitializeDpc(dpc, Routine, NULL);
+		printf("Client process: 0x%p\n", ClientProcess);
 
-		LARGE_INTEGER dueTime;
-		dueTime.QuadPart = -10000;
-		KeSetTimerEx(timer, dueTime, 1, dpc);
+		ClientBaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(ClientProcess));
+		printf("Client base address: 0x%p\n", ClientBaseAddress);
+		if (!ClientBaseAddress)
+		{
+			printf("Failed to get client base address\n");
+			return false;
+		}
 
+		ClientCr3 = physical::cr3::GetFromBase(ClientBaseAddress);
+		printf("Client cr3: 0x%p\n", ClientCr3);
+		if (!ClientCr3)
+		{
+			printf("Failed to get client cr3\n");
+			return false;
+		}
 
-		//HANDLE ThreadHandle{};
-		//Status = PsCreateSystemThread(
-		//	&ThreadHandle,
-		//	THREAD_ALL_ACCESS,
-		//	NULL,
-		//	NULL,
-		//	NULL,
-		//	Thread,
-		//	NULL
-		//);
-		//
-		//if (!NT_SUCCESS(Status))
-		//{
-		//	printf("Failed to create system thread: 0x%X\n", Status);
-		//	ObDereferenceObject(ClientProcess);
-		//	return false;
-		//}
-		//
-		//ZwClose(ThreadHandle);
-
+		KeSetEvent(Event, IO_NO_INCREMENT, FALSE);
 		return true;
 	}
-}
+
+	// Cleanup
+	static void Cleanup()
+	{
+		if (SectionHandle)
+		{
+			ZwClose(SectionHandle);
+		}
+
+		if (MappedBase)
+		{
+			MmUnmapViewInSystemSpace(MappedBase);
+		}
+
+		if (EventHandle)
+		{
+			ZwClose(EventHandle);
+		}
+
+		if (EventResponseHandle)
+		{
+			ZwClose(EventResponseHandle);
+		}
+
+		if (CachePool)
+		{
+			ExFreePool(CachePool);
+		}
+
+		if (ClientProcess)
+		{
+			ObfDereferenceObject(ClientProcess);
+		}
+	}
+
+	// Strings
+	static void InitStrings()
+	{
+		RtlInitUnicodeString(&SectionName, L"\\BaseNamedObjects\\Global\\SharedData");
+		RtlInitUnicodeString(&EventName, L"\\BaseNamedObjects\\SharedMemEvent");
+		RtlInitUnicodeString(&EventResponseName, L"\\BaseNamedObjects\\SharedMemEventResponse");
+	}
+
+private:
+
+	// Strings
+	inline static UNICODE_STRING SectionName{};
+	inline static UNICODE_STRING EventName{};
+	inline static UNICODE_STRING EventResponseName{};
+
+	// Global
+	inline static NTSTATUS Status{};
+
+	// Section
+	inline static HANDLE SectionHandle{};
+	inline static PVOID MappedBase{};
+	inline static SIZE_T MappedSize{};
+
+	// Client
+	inline static PEPROCESS ClientProcess{};
+	inline static HANDLE ClientPID{};
+	inline static uint64 ClientBaseAddress{};
+	inline static uint64 ClientCr3{};
+
+	// Events
+	inline static HANDLE EventHandle{};
+	inline static PKEVENT Event{};
+	inline static HANDLE EventResponseHandle{};
+	inline static PKEVENT EventResponse{};
+
+	// Cache
+	inline static void* CachePool{};
+	inline static size_t CachePoolSize{};
+};

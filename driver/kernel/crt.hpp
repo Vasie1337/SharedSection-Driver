@@ -2,65 +2,65 @@
 namespace crt
 {
 	__forceinline void* __cdecl memmove(void* Address, const void* Src, unsigned __int64 Size)
-	{
-		unsigned char* dest = static_cast<unsigned char*>(Address);
-		const unsigned char* src = static_cast<const unsigned char*>(Src);
+    {
+        unsigned char* dest = static_cast<unsigned char*>(Address);
+        const unsigned char* src = static_cast<const unsigned char*>(Src);
 
-		if (dest == src) {
-			return Address;
-		}
+        if (dest == src) {
+            return Address;
+        }
 
-		if (dest < src) {
-			for (unsigned __int64 i = 0; i < Size; ++i) {
-				dest[i] = src[i];
-			}
-		}
-		else {
-			for (unsigned __int64 i = Size; i > 0; --i) {
-				dest[i - 1] = src[i - 1];
-			}
-		}
+        if (dest < src) {
+            for (unsigned __int64 i = 0; i < Size; ++i) {
+                dest[i] = src[i];
+            }
+        }
+        else {
+            for (unsigned __int64 i = Size; i > 0; --i) {
+                dest[i - 1] = src[i - 1];
+            }
+        }
 
-		return Address;
-	}
+        return Address;
+    }
 
 	__forceinline void* __cdecl memset(void* Address, int Value, unsigned __int64 Size)
-	{
-		unsigned char* dest = static_cast<unsigned char*>(Address);
-		unsigned char val = static_cast<unsigned char>(Value);
+    {
+        unsigned char* dest = static_cast<unsigned char*>(Address);
+        unsigned char val = static_cast<unsigned char>(Value);
 
-		for (unsigned __int64 i = 0; i < Size; ++i) {
-			dest[i] = val;
-		}
+        for (unsigned __int64 i = 0; i < Size; ++i) {
+            dest[i] = val;
+        }
 
-		return Address;
-	}
+        return Address;
+    }
 
 	__forceinline void* __cdecl memcpy(void* Address, const void* Src, unsigned __int64 Size)
-	{
-		unsigned char* dest = static_cast<unsigned char*>(Address);
-		const unsigned char* src = static_cast<const unsigned char*>(Src);
+    {
+        unsigned char* dest = static_cast<unsigned char*>(Address);
+        const unsigned char* src = static_cast<const unsigned char*>(Src);
 
-		for (unsigned __int64 i = 0; i < Size; ++i) {
-			dest[i] = src[i];
-		}
+        for (unsigned __int64 i = 0; i < Size; ++i) {
+            dest[i] = src[i];
+        }
 
-		return Address;
-	}
+        return Address;
+    }
 
 	__forceinline int __cdecl memcmp(const void* First, const void* Second, unsigned __int64 Size)
-	{
-		const unsigned char* ptr1 = static_cast<const unsigned char*>(First);
-		const unsigned char* ptr2 = static_cast<const unsigned char*>(Second);
+    {
+        const unsigned char* ptr1 = static_cast<const unsigned char*>(First);
+        const unsigned char* ptr2 = static_cast<const unsigned char*>(Second);
 
-		for (unsigned __int64 i = 0; i < Size; ++i) {
-			if (ptr1[i] != ptr2[i]) {
-				return (ptr1[i] < ptr2[i]) ? -1 : 1;
-			}
-		}
+        for (unsigned __int64 i = 0; i < Size; ++i) {
+            if (ptr1[i] != ptr2[i]) {
+                return (ptr1[i] < ptr2[i]) ? -1 : 1;
+            }
+        }
 
-		return 0;
-	}
+        return 0;
+    }
 
 	__forceinline unsigned __int64 __cdecl strlen(const char* Str)
 	{
@@ -152,12 +152,5 @@ namespace crt
 		return nullptr;
 	}
 
-	__forceinline int __cdecl sprintf(char* Buffer, const char* Format, ...)
-	{
-		va_list Args;
-		va_start(Args, Format);
-		int ret = vsprintf(Buffer, Format, Args);
-		va_end(Args);
-		return ret;
-	}
+
 }

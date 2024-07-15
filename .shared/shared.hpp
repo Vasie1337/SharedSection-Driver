@@ -2,30 +2,21 @@
 
 enum class comm_type : unsigned long
 {
-	test = -1,
-	read = 0,
-	write = 1,
-	base = 2,
-	dirbase = 3,
+	init = 1,
+	destory = 2,
+	read_physical = 3,
+	write_physical = 4,
+	base = 5,
+	cr3 = 6,
 };
 
-typedef struct _SHARED_DATA
+struct shared_data
 {
-	unsigned short magic;
-
 	comm_type type;
 
-	unsigned long pid;
+	unsigned long process_id;
 
 	unsigned long long address;
 	unsigned long long buffer;
 	unsigned long long size;
-
-	volatile bool delivered;
-
-	bool IsValid() const
-	{
-		return magic == 0x74;
-	}
-
-} SHARED_DATA, *PSHARED_DATA;
+};

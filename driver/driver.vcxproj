@@ -62,8 +62,7 @@
     <DriverType>WDM</DriverType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -84,6 +83,8 @@
     <TargetName>$(ProjectName)</TargetName>
     <IncludePath>$(ProjectDir);$(SolutionDir).shared\;$(IncludePath)</IncludePath>
     <EnableInf2cat>false</EnableInf2cat>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <ClangTidyChecks>--checks=modernize-use-cast</ClangTidyChecks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -130,20 +131,22 @@
     <ClCompile Include="driver.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="comm\requests.hpp" />
-    <ClInclude Include="impl\nt.hpp" />
-    <ClInclude Include="kernel\ctx.hpp" />
+    <ClInclude Include="comm\comm.hpp" />
+    <ClInclude Include="hide\offsets.hpp" />
+    <ClInclude Include="hide\ret.hpp" />
+    <ClInclude Include="kernel\nt.hpp" />
     <ClInclude Include="defs.hpp" />
     <ClInclude Include="include.hpp" />
-    <ClInclude Include="impl\crt.hpp" />
+    <ClInclude Include="kernel\crt.hpp" />
     <ClInclude Include="kernel\modules.hpp" />
-    <ClInclude Include="impl\scanner.hpp" />
-    <ClInclude Include="comm\registry\registry.hpp" />
-    <ClInclude Include="comm\comm.hpp" />
-    <ClInclude Include="physical\physical.hpp" />
-    <ClInclude Include="physical\pml4.hpp" />
+    <ClInclude Include="kernel\scanner.hpp" />
+    <ClInclude Include="kernel\physical\cr3.hpp" />
+    <ClInclude Include="kernel\physical\physical.hpp" />
+    <ClInclude Include="hide\thread.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="hide\stub.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets" />
 </Project>

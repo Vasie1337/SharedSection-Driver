@@ -1,4 +1,3 @@
-#pragma once
 #define PRINT_DEBUG 1
 
 #if PRINT_DEBUG
@@ -7,7 +6,7 @@
 #define printf(text, ...)
 #endif
 
-#define dereference(ptr)(unsigned long long)(ptr + *(int*)((unsigned int*)ptr + 3 ) + 7)
+#define dereference(ptr)(uint64)(ptr + *(int*)((unsigned int*)ptr + 3 ) + 7)
 #define in_range(x,a,b)(x >= a && x <= b) 
 #define get_bits(x)(in_range((x&(~0x20)),'A','F') ? ((x&(~0x20)) - 'A' + 0xA) : (in_range(x,'0','9') ? x - '0' : 0))
 #define get_byte(x)(get_bits(x[0]) << 4 | get_bits(x[1]))
@@ -22,14 +21,3 @@
 	} \
 }
 
-typedef class DATA_ENTRY
-{
-public:
-	bool operator!() const
-	{
-		return !base || !size;
-	}
-
-	unsigned long long base;
-	unsigned long long size;
-};
