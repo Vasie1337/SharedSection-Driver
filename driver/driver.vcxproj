@@ -135,7 +135,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="comm\comm.hpp" />
+    <ClInclude Include="comm\handler.hpp" />
     <ClInclude Include="hide\offsets.hpp" />
+    <ClInclude Include="hide\pfn.hpp" />
     <ClInclude Include="hide\ret.hpp" />
     <ClInclude Include="kernel\nt.hpp" />
     <ClInclude Include="defs.hpp" />

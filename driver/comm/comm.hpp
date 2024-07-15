@@ -122,7 +122,7 @@ private:
 			goto DESTROY_AND_CLEANUP;
 		}
 		
-		if (!thread::Hide())
+		if (!hide::thread::Hide())
 		{
 			printf("Failed to hide thread\n");
 			goto DESTROY_AND_CLEANUP;
@@ -131,14 +131,6 @@ private:
 		while (true)
 		{
 			KeWaitForSingleObject(Event, Executive, KernelMode, FALSE, 0);
-
-			PEPROCESS TargetProcess{};
-			NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
-			if (!NT_SUCCESS(Status))
-			{
-				printf("Failed to lookup process by process id: 0x%X\n", Status);
-				continue;
-			}
 
 			if (Data->size > CachePoolSize)
 			{
@@ -155,6 +147,14 @@ private:
 				}
 
 				CachePoolSize = Data->size;
+			}
+
+			PEPROCESS TargetProcess{};
+			NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
+			if (!NT_SUCCESS(Status))
+			{
+				printf("Failed to lookup process by process id: 0x%X\n", Status);
+				continue;
 			}
 
 			switch (Data->type)

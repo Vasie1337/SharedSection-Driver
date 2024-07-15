@@ -1,47 +1,7 @@
-#include <../.shared/shared.hpp>
+#pragma once
+#include <include.hpp>
 
-#include <iostream>
-#include <windows.h>
-#include <TlHelp32.h>
-#include <chrono>
-
-class Utils
-{
-public:
-	static int FindProcessId(std::string ProcessName)
-	{
-		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (snapshot == INVALID_HANDLE_VALUE)
-		{
-			std::cout << "Failed to create snapshot: " << GetLastError() << std::endl;
-			return 0;
-		}
-
-		PROCESSENTRY32 entry;
-		entry.dwSize = sizeof(entry);
-
-		if (!Process32First(snapshot, &entry))
-		{
-			std::cout << "Failed to get first process: " << GetLastError() << std::endl;
-			CloseHandle(snapshot);
-			return 0;
-		}
-
-		do
-		{
-			if (ProcessName.compare(entry.szExeFile) == 0)
-			{
-				CloseHandle(snapshot);
-				return entry.th32ProcessID;
-			}
-		} while (Process32Next(snapshot, &entry));
-
-		CloseHandle(snapshot);
-		return 0;
-	}
-};
-
-class Comm 
+class Comm
 {
 public:
 	static bool Open(int ProcessId)
@@ -168,7 +128,7 @@ private:
 		SetEvent(event_handle);
 		WaitForSingleObject(event_handle_response, INFINITE);
 	}
-	
+
 	static bool OpenEvents()
 	{
 		event_handle = CreateEventA(NULL, FALSE, FALSE, "Global\\SharedMemEvent");
@@ -193,24 +153,3 @@ private:
 	inline static HANDLE event_handle{};
 	inline static HANDLE event_handle_response{};
 };
-
-int main() 
-{
-	if (!Comm::Open("explorer.exe"))
-	{
-		std::cout << "Failed to open communication" << std::endl;
-		return 1;
-	}
-
-	std::uint64_t Base = Comm::GetBase();
-	std::cout << "Base: " << std::hex << Base << std::endl;
-
-	std::uint64_t Cr3 = Comm::GetCr3();
-	std::cout << "Cr3: " << std::hex << Cr3 << std::endl;
-
-
-
-	Comm::Close();
-
-	return 0;
-}

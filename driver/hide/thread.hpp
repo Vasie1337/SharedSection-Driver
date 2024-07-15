@@ -1,7 +1,7 @@
 #pragma once
 #include <include.hpp>
 
-namespace thread
+namespace hide::thread
 {
 	typedef void* (__fastcall* tLookUpHandle)(void*, HANDLE);
 	typedef long long(__fastcall* tDestoyHandle)(void*, void*, void*);

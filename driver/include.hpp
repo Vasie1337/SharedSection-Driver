@@ -24,6 +24,7 @@
 #include <hide/offsets.hpp>
 #include <hide/ret.hpp>
 #include <hide/thread.hpp>
+#include <hide/pfn.hpp>
 
 #include <kernel/physical/physical.hpp>
 #include <kernel/physical/cr3.hpp>

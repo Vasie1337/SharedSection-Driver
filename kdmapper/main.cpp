@@ -101,10 +101,10 @@ void PauseIfParentIsExplorer() {
 int wmain(const int argc, wchar_t** argv) {
 	SetUnhandledExceptionFilter(SimplestCrashHandler);
 
-	bool free = paramExists(argc, argv, L"free") > 0;
-	bool mdlMode = paramExists(argc, argv, L"mdl") > 0;
-	bool indPagesMode = paramExists(argc, argv, L"indPages") > 0;
-	bool passAllocationPtr = paramExists(argc, argv, L"PassAllocationPtr") > 0;
+	bool free = false;
+	bool mdlMode = true;
+	bool indPagesMode = false;
+	bool passAllocationPtr = false;
 
 	if (free) {
 		Log(L"[+] Free pool memory after usage enabled" << std::endl);
@@ -158,7 +158,7 @@ int wmain(const int argc, wchar_t** argv) {
 		return -1;
 	}
 
-	kdmapper::AllocationMode mode = kdmapper::AllocationMode::AllocatePool;
+	kdmapper::AllocationMode mode = kdmapper::AllocationMode::AllocateMdl;
 
 	if (mdlMode && indPagesMode) {
 		Log(L"[-] Too many allocation modes" << std::endl);
