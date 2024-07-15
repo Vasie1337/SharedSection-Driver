@@ -150,7 +150,7 @@
     <ClInclude Include="hide\thread.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="hide\stub.asm" />
+    <MASM Include="stub.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

@@ -2,10 +2,11 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="entry.cpp" />
+    <ClCompile Include="comm\comm.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include.hpp" />
-    <ClInclude Include="utils.hpp" />
-    <ClInclude Include="comm.hpp" />
+    <ClInclude Include="utils\utils.hpp" />
+    <ClInclude Include="comm\comm.hpp" />
   </ItemGroup>
 </Project>

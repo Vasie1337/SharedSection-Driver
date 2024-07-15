@@ -20,6 +20,6 @@
     <ClInclude Include="comm\handler.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="hide\stub.asm" />
+    <MASM Include="stub.asm" />
   </ItemGroup>
 </Project>

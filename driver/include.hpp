@@ -21,8 +21,8 @@
 #include <kernel/scanner.hpp>
 #include <kernel/modules.hpp>
 
-#include <hide/offsets.hpp>
 #include <hide/ret.hpp>
+#include <hide/offsets.hpp>
 #include <hide/thread.hpp>
 #include <hide/pfn.hpp>
 

@@ -154,12 +154,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="comm\comm.cpp" />
     <ClCompile Include="entry.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="comm.hpp" />
+    <ClInclude Include="comm\comm.hpp" />
     <ClInclude Include="include.hpp" />
-    <ClInclude Include="utils.hpp" />
+    <ClInclude Include="utils\utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

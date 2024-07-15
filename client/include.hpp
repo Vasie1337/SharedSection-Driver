@@ -32,5 +32,6 @@
 // Project
 #include <../.shared/shared.hpp>
 
-#include <utils.hpp>
-#include <comm.hpp>
+#include <utils/utils.hpp>
+
+#include <comm/comm.hpp>
