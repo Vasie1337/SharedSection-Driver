@@ -2,16 +2,57 @@
 
 #include <iostream>
 #include <windows.h>
-#include <signal.h>
-#include <signal.h>
+#include <TlHelp32.h>
 #include <chrono>
+
+class Utils
+{
+public:
+	static int FindProcessId(std::string ProcessName)
+	{
+		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (snapshot == INVALID_HANDLE_VALUE)
+		{
+			std::cout << "Failed to create snapshot: " << GetLastError() << std::endl;
+			return 0;
+		}
+
+		PROCESSENTRY32 entry;
+		entry.dwSize = sizeof(entry);
+
+		if (!Process32First(snapshot, &entry))
+		{
+			std::cout << "Failed to get first process: " << GetLastError() << std::endl;
+			CloseHandle(snapshot);
+			return 0;
+		}
+
+		do
+		{
+			if (ProcessName.compare(entry.szExeFile) == 0)
+			{
+				CloseHandle(snapshot);
+				return entry.th32ProcessID;
+			}
+		} while (Process32Next(snapshot, &entry));
+
+		CloseHandle(snapshot);
+		return 0;
+	}
+};
 
 class Comm 
 {
 public:
-	bool Open()
+	static bool Open(int ProcessId)
 	{
-		target_pid = 1856;
+		if (!ProcessId)
+		{
+			std::cout << "Invalid process id" << std::endl;
+			return false;
+		}
+
+		target_pid = ProcessId;
 
 		section_handle = CreateFileMappingA(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(shared_data), "Global\\SharedData");
 		if (!section_handle)
@@ -37,8 +78,12 @@ public:
 
 		return true;
 	}
+	static bool Open(std::string ProcessName)
+	{
+		return Open(Utils::FindProcessId(ProcessName));
+	}
 
-	void Close()
+	static void Close()
 	{
 		shared_section->type = comm_type::destory;
 
@@ -50,7 +95,7 @@ public:
 		CloseHandle(event_handle);
 	}
 
-	std::uint64_t GetCr3()
+	static std::uint64_t GetCr3()
 	{
 		shared_section->type = comm_type::cr3;
 		shared_section->process_id = target_pid;
@@ -61,7 +106,7 @@ public:
 		return shared_section->buffer;
 	}
 
-	std::uint64_t GetBase()
+	static std::uint64_t GetBase()
 	{
 		shared_section->type = comm_type::base;
 		shared_section->process_id = target_pid;
@@ -72,7 +117,7 @@ public:
 		return shared_section->buffer;
 	}
 
-	bool ReadPhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t Size)
+	static bool ReadPhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t Size)
 	{
 		shared_section->type = comm_type::read_physical;
 		shared_section->process_id = target_pid;
@@ -86,7 +131,7 @@ public:
 		return true;
 	}
 
-	bool WritePhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t Size)
+	static bool WritePhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t Size)
 	{
 		shared_section->type = comm_type::write_physical;
 		shared_section->process_id = target_pid;
@@ -115,7 +160,7 @@ public:
 	}
 
 private:
-	void Initialize()
+	static void Initialize()
 	{
 		shared_section->type = comm_type::init;
 		shared_section->process_id = GetCurrentProcessId();
@@ -124,7 +169,7 @@ private:
 		WaitForSingleObject(event_handle_response, INFINITE);
 	}
 	
-	bool OpenEvents()
+	static bool OpenEvents()
 	{
 		event_handle = CreateEventA(NULL, FALSE, FALSE, "Global\\SharedMemEvent");
 		if (!event_handle)
@@ -142,34 +187,30 @@ private:
 		return true;
 	}
 
-	long target_pid{};
-
-	shared_data* shared_section{};
-	HANDLE section_handle{};
-
-	HANDLE event_handle{};
-	HANDLE event_handle_response{};
+	inline static long target_pid{};
+	inline static shared_data* shared_section{};
+	inline static HANDLE section_handle{};
+	inline static HANDLE event_handle{};
+	inline static HANDLE event_handle_response{};
 };
-
-Comm comm{};
 
 int main() 
 {
-	if (!comm.Open())
+	if (!Comm::Open("explorer.exe"))
 	{
 		std::cout << "Failed to open communication" << std::endl;
 		return 1;
 	}
 
-	std::uint64_t Base = comm.GetBase();
+	std::uint64_t Base = Comm::GetBase();
 	std::cout << "Base: " << std::hex << Base << std::endl;
 
-	std::uint64_t Cr3 = comm.GetCr3();
+	std::uint64_t Cr3 = Comm::GetCr3();
 	std::cout << "Cr3: " << std::hex << Cr3 << std::endl;
 
 
 
-	comm.Close();
+	Comm::Close();
 
 	return 0;
 }
