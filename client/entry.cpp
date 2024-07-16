@@ -19,7 +19,7 @@ int main()
 	short Mz = Comm::Read<short>(Base);
 	std::cout << "Mz: " << std::hex << Mz << std::endl;
 
-	//Comm::Close();
+	Comm::Close();
 
 	getchar();
 }

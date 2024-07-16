@@ -170,6 +170,7 @@ private:
 				}
 
 				CachePoolSize = Data->size;
+				printf("Allocated new cache pool: 0x%p\n", CachePool);
 			}
 
 			NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
