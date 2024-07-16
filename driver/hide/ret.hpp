@@ -50,7 +50,7 @@ namespace return_spoofer::detail
 				third,
 				fourth,
 				shell_param,
-				nullptr,
+				0,
 				pack...
 			);
 		}
@@ -91,7 +91,7 @@ namespace return_spoofer::detail
 				third,
 				fourth,
 				shell_param,
-				nullptr
+				0
 			);
 		}
 	};
@@ -99,7 +99,7 @@ namespace return_spoofer::detail
 
 namespace return_spoofer
 {
-	inline unsigned char* target_base = nullptr;
+	inline unsigned char* target_base = 0;
 	
 	template <typename result, typename... arguments>
 	static inline result call(

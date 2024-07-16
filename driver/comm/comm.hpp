@@ -20,14 +20,20 @@ public:
 			NULL
 		);
 
-		Status = ZwOpenSection(
+		LARGE_INTEGER MaximumSize{};
+		MaximumSize.QuadPart = 1024 * 1024;
+
+		Status = ZwCreateSection(
 			&SectionHandle,
-			SECTION_MAP_READ | SECTION_QUERY,
-			&ObjectAttributes
+			SECTION_ALL_ACCESS,
+			&ObjectAttributes,
+			&MaximumSize,
+			PAGE_READWRITE,
+			SEC_COMMIT,
+			NULL
 		);
-		if (!NT_SUCCESS(Status))
-		{
-			printf("Failed to open section: 0x%X\n", Status);
+		if (!NT_SUCCESS(Status)) {
+			printf("Failed to create section: 0x%X\n", Status);
 			Cleanup();
 			return Status;
 		}
@@ -101,6 +107,7 @@ private:
 			printf("Failed to create event\n");
 			return STATUS_UNSUCCESSFUL;
 		}
+		KeClearEvent(Event);
 
 		EventResponse = IoCreateNotificationEvent(&EventResponseName, &EventResponseHandle);
 		if (!EventResponse)
@@ -108,6 +115,7 @@ private:
 			printf("Failed to create event response\n");
 			return STATUS_UNSUCCESSFUL;
 		}
+		KeClearEvent(EventResponse);
 
 		return STATUS_SUCCESS;
 	}
@@ -115,13 +123,9 @@ private:
 	// Packet handler thread	
 	static void Handler(void* Context) 
 	{
-		auto* Data = reinterpret_cast<shared_data*>(MappedBase);
-		if (!Init(Data))
-		{
-			printf("Failed to initialize\n");
-			goto DESTROY_AND_CLEANUP;
-		}
-		
+		PEPROCESS TargetProcess{};
+		shared_data* Data = reinterpret_cast<shared_data*>(MappedBase);
+
 		if (!hide::thread::Hide())
 		{
 			printf("Failed to hide thread\n");
@@ -130,7 +134,25 @@ private:
 
 		while (true)
 		{
-			KeWaitForSingleObject(Event, Executive, KernelMode, FALSE, 0);
+			KeWaitForSingleObject(Event, Executive, KernelMode, FALSE, nullptr);
+			KeClearEvent(Event);
+
+			if (Data->type == comm_type::none)
+			{
+				continue;
+			}
+
+			if (Data->type == comm_type::init)
+			{
+				printf("Received init\n");
+				if (!Init(Data))
+				{
+					printf("Failed to initialize\n");
+					goto DESTROY_AND_CLEANUP;
+				}
+				KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+				continue;
+			}
 
 			if (Data->size > CachePoolSize)
 			{
@@ -143,17 +165,18 @@ private:
 				if (!CachePool)
 				{
 					printf("Failed to allocate pool\n");
+					KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
 					continue;
 				}
 
 				CachePoolSize = Data->size;
 			}
 
-			PEPROCESS TargetProcess{};
 			NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
 			if (!NT_SUCCESS(Status))
 			{
 				printf("Failed to lookup process by process id: 0x%X\n", Status);
+				KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
 				continue;
 			}
 
@@ -161,6 +184,7 @@ private:
 			{
 				case comm_type::cr3:
 				{
+					printf("Received cr3\n");
 					const auto BaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(TargetProcess));
 					if (!BaseAddress)
 					{
@@ -180,6 +204,7 @@ private:
 				}
 				case comm_type::base:
 				{
+					printf("Received base\n");
 					const auto BaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(TargetProcess));
 					if (!BaseAddress)
 					{
@@ -192,6 +217,7 @@ private:
 				}
 				case comm_type::read_physical:
 				{
+					printf("Received read physical\n");
 					physical::ReadMemory(physical::cr3::StoredCr3, reinterpret_cast<void*>(Data->address), CachePool, Data->size, &Data->size);
 					if (!Data->size)
 					{
@@ -208,6 +234,7 @@ private:
 				}
 				case comm_type::write_physical:
 				{
+					printf("Received write physical\n");
 					physical::ReadMemory(ClientCr3, reinterpret_cast<void*>(Data->buffer), CachePool, Data->size, &Data->size);
 					if (!Data->size)
 					{
@@ -227,10 +254,6 @@ private:
 					printf("Received destory\n");
 					goto DESTROY_AND_CLEANUP;
 				}
-				case comm_type::init:
-				{
-					break;
-				}
 				default:
 				{
 					printf("Received unknown type\n");
@@ -243,6 +266,7 @@ private:
 
 DESTROY_AND_CLEANUP:
 		printf("Exiting thread\n");
+		KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
 		Cleanup();
 		PsTerminateSystemThread(STATUS_SUCCESS);
 	}
@@ -282,8 +306,6 @@ DESTROY_AND_CLEANUP:
 			printf("Failed to get client cr3\n");
 			return false;
 		}
-
-		KeSetEvent(Event, IO_NO_INCREMENT, FALSE);
 		return true;
 	}
 

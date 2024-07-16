@@ -2,28 +2,13 @@
 
 int main()
 {
-	if (!Comm::Open()) // Always call before mapping the driver
+	if (!Comm::Open())
 	{
 		std::cerr << "Failed to open comm" << std::endl;
 		return 1;
 	}
 
-	// Map the driver
-
-	long TargetPid = 0;
-	while (1)
-	{
-		Sleep(1000);
-
-		TargetPid = Utils::FindProcessId("r5apex.exe");
-		if (TargetPid)
-		{
-			Comm::SetTargetPid(TargetPid);
-			break;
-		}
-	}
-
-	// Now you can do whatever you want with the driver
+	Comm::SetTargetPid(GetCurrentProcessId());
 
 	std::uint64_t Base = Comm::GetBase();
 	std::cout << "Base: " << std::hex << Base << std::endl;
@@ -34,5 +19,7 @@ int main()
 	short Mz = Comm::Read<short>(Base);
 	std::cout << "Mz: " << std::hex << Mz << std::endl;
 
-	Comm::Close(); // Always call after you're done with the driver
+	//Comm::Close();
+
+	getchar();
 }

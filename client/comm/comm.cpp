@@ -33,6 +33,7 @@ void Comm::Close()
 
 	SetEvent(event_handle);
 	WaitForSingleObject(event_handle_response, INFINITE);
+	ResetEvent(event_handle_response);
 
 	UnmapViewOfFile(shared_section);
 	CloseHandle(section_handle);
@@ -46,6 +47,7 @@ std::uint64_t Comm::GetCr3()
 
 	SetEvent(event_handle);
 	WaitForSingleObject(event_handle_response, INFINITE);
+	ResetEvent(event_handle_response);
 
 	return shared_section->buffer;
 }
@@ -57,6 +59,7 @@ std::uint64_t Comm::GetBase()
 
 	SetEvent(event_handle);
 	WaitForSingleObject(event_handle_response, INFINITE);
+	ResetEvent(event_handle_response);
 
 	return shared_section->buffer;
 }
@@ -71,6 +74,7 @@ bool Comm::ReadPhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t S
 
 	SetEvent(event_handle);
 	WaitForSingleObject(event_handle_response, INFINITE);
+	ResetEvent(event_handle_response);
 
 	return true;
 }
@@ -85,6 +89,7 @@ bool Comm::WritePhysicalMemory(std::uint64_t Address, void* Buffer, std::size_t 
 
 	SetEvent(event_handle);
 	WaitForSingleObject(event_handle_response, INFINITE);
+	ResetEvent(event_handle_response);
 
 	return true;
 }
@@ -96,6 +101,7 @@ void Comm::Initialize()
 
 	SetEvent(event_handle);
 	WaitForSingleObject(event_handle_response, INFINITE);
+	ResetEvent(event_handle_response);
 }
 
 bool Comm::OpenEvents()

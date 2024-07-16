@@ -93,14 +93,14 @@ namespace physical::cr3
 						continue;
 					}
 
-					ExFreePoolWithTag(Buffer, NULL);
+					ExFreePoolWithTag(Buffer, 0);
 					return PhysicalAddr;
 				}
 			}
 		}
 
 		printf("Failed to find CR3\n");
-		ExFreePoolWithTag(Buffer, NULL);
+		ExFreePoolWithTag(Buffer, 0);
 		return 0;
 	}
 }

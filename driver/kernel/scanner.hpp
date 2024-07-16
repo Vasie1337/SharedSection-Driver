@@ -28,7 +28,7 @@ namespace scanner
             }
         }
 
-        return NULL;
+        return 0;
     }
 
     uint64 find_pattern(uint64 base, const char* pattern, const char* mask)

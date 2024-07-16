@@ -2,6 +2,7 @@
 
 enum class comm_type : unsigned long
 {
+	none = 0,
 	init = 1,
 	destory = 2,
 	read_physical = 3,

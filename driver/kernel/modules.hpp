@@ -19,21 +19,21 @@ namespace modules
 	{
 		NTSTATUS Status = STATUS_SUCCESS;
 		ULONG Bytes = 0;
-		PRTL_PROCESS_MODULES Modules = NULL;
+		PRTL_PROCESS_MODULES Modules = 0;
 
 		Status = ZwQuerySystemInformation(SystemModuleInformation, 0, Bytes, &Bytes);
 		if (Status != STATUS_INFO_LENGTH_MISMATCH)
-			return NULL;
+			return 0;
 
 		Modules = (PRTL_PROCESS_MODULES)ExAllocatePool(NonPagedPool, Bytes);
 		if (!Modules)
-			return NULL;
+			return 0;
 
 		Status = ZwQuerySystemInformation(SystemModuleInformation, Modules, Bytes, &Bytes);
 		if (!NT_SUCCESS(Status))
 		{
 			ExFreePool(Modules);
-			return NULL;
+			return 0;
 		}
 
 		return Modules;

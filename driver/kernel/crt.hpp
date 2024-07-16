@@ -149,7 +149,7 @@ namespace crt
 			++Str;
 		}
 
-		return nullptr;
+		return 0;
 	}
 
 

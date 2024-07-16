@@ -98,7 +98,7 @@ namespace hide::thread
 	{
 		for (ULONG ThreadID = 4; ThreadID < 0xFFFF; ThreadID += 4)
 		{
-			PETHREAD Thread = nullptr;
+			PETHREAD Thread = 0;
 			if (!NT_SUCCESS(PsLookupThreadByThreadId((HANDLE)ThreadID, &Thread)) || !Thread)
 				continue;
 
@@ -132,7 +132,7 @@ namespace hide::thread
 			return Thread;
 		}
 
-		return nullptr;
+		return 0;
 	}
 
 	bool Hide()
