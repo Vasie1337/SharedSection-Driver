@@ -6,7 +6,7 @@ namespace hide::thread
 	typedef void* (__fastcall* tLookUpHandle)(void*, HANDLE);
 	typedef long long(__fastcall* tDestoyHandle)(void*, void*, void*);
 
-	bool ClearPspCidTable(PETHREAD _Thread)
+	inline bool ClearPspCidTable(PETHREAD _Thread)
 	{
 		const auto mod = modules::get_kernel_module("ntoskrnl.exe");
 		if (!mod)
@@ -64,7 +64,7 @@ namespace hide::thread
 		return true;
 	}
 
-	void SwapThreadValues(PETHREAD _Current, PETHREAD _Target)
+	inline void SwapThreadValues(PETHREAD _Current, PETHREAD _Target)
 	{
 		const auto Current = reinterpret_cast<uint64>(_Current);
 		const auto Target = reinterpret_cast<uint64>(_Target);
@@ -73,7 +73,7 @@ namespace hide::thread
 		*(void**)(Current + hide::offsets::Win32StartAddress) = *(void**)(Target + hide::offsets::Win32StartAddress);
 	}
 
-	bool IsAdressOutsideModulelist(uint64 Address)
+	inline bool IsAdressOutsideModulelist(uint64 Address)
 	{
 		if (!Address)
 			return true;
@@ -94,7 +94,7 @@ namespace hide::thread
 		return true;
 	}
 
-	PETHREAD GetValidThread()
+	inline PETHREAD GetValidThread()
 	{
 		for (ULONG ThreadID = 4; ThreadID < 0xFFFF; ThreadID += 4)
 		{
@@ -135,7 +135,7 @@ namespace hide::thread
 		return 0;
 	}
 
-	bool Hide()
+	inline bool Hide()
 	{
 		const auto Thread = reinterpret_cast<uint64>(PsGetCurrentThread());
 		if (!Thread)
@@ -147,7 +147,7 @@ namespace hide::thread
 		*reinterpret_cast<uint32*>(Thread + hide::offsets::MiscFlags) &= ~(1ul << hide::offsets::SystemThread);
 		*reinterpret_cast<uint32*>(Thread + hide::offsets::MiscFlags) &= ~(1ul << hide::offsets::AlertAble);
 		*reinterpret_cast<uint32*>(Thread + hide::offsets::MiscFlags) &= ~(1ul << hide::offsets::ApcQueuable);
-
+		
 		printf("Spoofed thread values\n");
 
 		//if (!ClearPspCidTable(_Thread))

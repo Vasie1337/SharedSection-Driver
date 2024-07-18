@@ -128,7 +128,7 @@ NTSTATUS NTAPI MmCopyVirtualMemory(PEPROCESS SourceProcess, void* SourceAddress,
 
 void* NTAPI PsGetProcessSectionBaseAddress(PEPROCESS Process);
 
-POBJECT_TYPE MmSectionObjectType = 0;
+inline POBJECT_TYPE MmSectionObjectType = 0;
 
 NTSTATUS __fastcall ZwIsProcessInJob(void* a1, void* a2);
 

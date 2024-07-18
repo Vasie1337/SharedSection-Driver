@@ -3,9 +3,9 @@
 
 namespace physical::cr3
 {
-	uint64 StoredCr3 = 0;
+	inline uint64 StoredCr3 = 0;
 
-	uint64 GetFromBase(uint64 Base)
+	inline uint64 GetFromBase(uint64 Base)
 	{
 		if (!Base)
 		{

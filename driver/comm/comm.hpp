@@ -1,8 +1,6 @@
 #pragma once
 #include <include.hpp>
 
-using namespace return_spoofer;
-
 class comm 
 {
 public:

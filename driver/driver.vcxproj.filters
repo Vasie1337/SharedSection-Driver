@@ -2,6 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="driver.cpp" />
+    <ClCompile Include="hide\callout\callout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kernel\crt.hpp" />
@@ -14,12 +15,12 @@
     <ClInclude Include="kernel\physical\cr3.hpp" />
     <ClInclude Include="comm\comm.hpp" />
     <ClInclude Include="hide\thread.hpp" />
-    <ClInclude Include="hide\ret.hpp" />
+    <ClInclude Include="hide\callout\callout.hpp" />
     <ClInclude Include="hide\offsets.hpp" />
     <ClInclude Include="hide\pfn.hpp" />
     <ClInclude Include="comm\handler.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="stub.asm" />
+    <MASM Include="hide\callout\callout.asm" />
   </ItemGroup>
 </Project>

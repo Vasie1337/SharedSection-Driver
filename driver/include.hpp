@@ -21,10 +21,11 @@
 #include <kernel/scanner.hpp>
 #include <kernel/modules.hpp>
 
-#include <hide/ret.hpp>
 #include <hide/offsets.hpp>
 #include <hide/thread.hpp>
 #include <hide/pfn.hpp>
+
+#include <hide/callout/callout.hpp>
 
 #include <kernel/physical/physical.hpp>
 #include <kernel/physical/cr3.hpp>

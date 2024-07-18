@@ -1,4 +1,4 @@
-#define PRINT_DEBUG 1
+#define PRINT_DEBUG 0
 
 #if PRINT_DEBUG
 #define printf(text, ...) DbgPrintEx(DPFLTR_IHVBUS_ID, 0, text, ##__VA_ARGS__)

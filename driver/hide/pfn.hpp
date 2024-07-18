@@ -3,7 +3,7 @@
 
 namespace hide::pfn
 {
-	bool Clear(PMDL Mdl)
+    inline bool Clear(PMDL Mdl)
 	{
         PPFN_NUMBER Array = MmGetMdlPfnArray(Mdl);
         if (!Array)

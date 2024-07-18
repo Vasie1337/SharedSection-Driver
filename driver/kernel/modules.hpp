@@ -15,7 +15,7 @@ namespace modules
 		uint64 size;
 	};
 
-	PRTL_PROCESS_MODULES get_modules()
+	inline PRTL_PROCESS_MODULES get_modules()
 	{
 		NTSTATUS Status = STATUS_SUCCESS;
 		ULONG Bytes = 0;
@@ -39,7 +39,7 @@ namespace modules
 		return Modules;
 	}
 
-	DATA_ENTRY get_kernel_module(const char* module_name)
+	inline DATA_ENTRY get_kernel_module(const char* module_name)
 	{
 		DATA_ENTRY entry = { 0 };
 
@@ -59,7 +59,7 @@ namespace modules
 		return entry;
 	}
 
-	DATA_ENTRY get_section(DATA_ENTRY module, const char* section_name)
+	inline DATA_ENTRY get_section(DATA_ENTRY module, const char* section_name)
 	{
 		PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)module.base;
 		PIMAGE_NT_HEADERS nt_headers = (PIMAGE_NT_HEADERS)(module.base + dos_header->e_lfanew);
