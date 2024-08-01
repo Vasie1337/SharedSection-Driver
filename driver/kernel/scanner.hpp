@@ -3,7 +3,7 @@
 
 namespace scanner
 {
-    inline uint64 find_pattern(uint64 base, size_t range, const char* pattern, const char* mask)
+    __forceinline uint64 find_pattern(uint64 base, size_t range, const char* pattern, const char* mask)
     {
         const auto check_mask = [](const char* base, const char* pattern, const char* mask) -> bool
             {
@@ -31,7 +31,7 @@ namespace scanner
         return 0;
     }
 
-    inline uint64 find_pattern(uint64 base, const char* pattern, const char* mask)
+    __forceinline uint64 find_pattern(uint64 base, const char* pattern, const char* mask)
     {
         const PIMAGE_NT_HEADERS headers = (PIMAGE_NT_HEADERS)(base + ((PIMAGE_DOS_HEADER)base)->e_lfanew);
         const PIMAGE_SECTION_HEADER sections = IMAGE_FIRST_SECTION(headers);
@@ -54,7 +54,7 @@ namespace scanner
         return 0;
     }
 
-    inline uint64 find_pattern(uint64 module_base, const char* pattern)
+    __forceinline uint64 find_pattern(uint64 module_base, const char* pattern)
     {
         auto pattern_ = pattern;
         uint64 first_match = 0;

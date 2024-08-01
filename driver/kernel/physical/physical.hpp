@@ -3,14 +3,14 @@
 
 namespace physical
 {
-	inline NTSTATUS ReadPhysical(uint64 Address, void* Buffer, size_t Size, size_t* Bytes)
+	__forceinline NTSTATUS ReadPhysical(uint64 Address, void* Buffer, size_t Size, size_t* Bytes)
 	{
 		MM_COPY_ADDRESS Target = { 0 };
 		Target.PhysicalAddress.QuadPart = Address;
-		return MmCopyMemory(Buffer, Target, Size, MM_COPY_MEMORY_PHYSICAL, Bytes);
+		return ret::spoof_call(&MmCopyMemory, (PVOID)Buffer, Target, (SIZE_T)Size, (ULONG)MM_COPY_MEMORY_PHYSICAL, Bytes);
 	}
 
-	inline NTSTATUS WritePhysical(uint64 Address, void* Buffer, size_t Size, size_t* Bytes)
+	__forceinline NTSTATUS WritePhysical(uint64 Address, void* Buffer, size_t Size, size_t* Bytes)
 	{
 		if (!Address)
 			return STATUS_UNSUCCESSFUL;
@@ -18,18 +18,18 @@ namespace physical
 		PHYSICAL_ADDRESS Target = { 0 };
 		Target.QuadPart = Address;
 
-		void* Mapped = MmMapIoSpaceEx(Target, Size, PAGE_READWRITE);
+		void* Mapped = ret::spoof_call(&MmMapIoSpace, Target, Size, MmNonCached);
 		if (!Mapped)
 			return STATUS_UNSUCCESSFUL;
 
 		crt::memcpy(Mapped, Buffer, Size);
-		MmUnmapIoSpace(Mapped, Size);
+		ret::spoof_call(&MmUnmapIoSpace, Mapped, Size);
 		*Bytes = Size;
 
 		return STATUS_SUCCESS;
 	}
 
-	inline uint64 TranslateLinear(uint64 Cr3, uint64 Address)
+	__forceinline uint64 TranslateLinear(uint64 Cr3, uint64 Address)
 	{
 		Cr3 &= ~0xf;
 
@@ -79,7 +79,7 @@ namespace physical
 		return Address + virt_addr;
 	}
 
-	inline NTSTATUS ReadMemory(uint64 Cr3, void* Address, void* AllocatedBuffer, size_t Size, size_t* Read)
+	__forceinline NTSTATUS ReadMemory(uint64 Cr3, void* Address, void* AllocatedBuffer, size_t Size, size_t* Read)
 	{
 		if (Cr3 == 0 || !Address || !AllocatedBuffer || Size == 0 || !Read)
 		{
@@ -116,7 +116,7 @@ namespace physical
 		return Status;
 	}
 
-	inline NTSTATUS WriteMemory(uint64 Cr3, void* Address, void* Buffer, size_t Size, size_t* Written)
+	__forceinline NTSTATUS WriteMemory(uint64 Cr3, void* Address, void* Buffer, size_t Size, size_t* Written)
 	{
 		if (Cr3 == 0 || !Address || !Buffer || Size == 0 || !Written)
 		{

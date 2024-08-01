@@ -6,7 +6,7 @@ class comm
 public:
 
 	// Open shared section
-	static NTSTATUS Open()
+	__forceinline static NTSTATUS Open()
 	{
 		InitStrings();
 
@@ -97,7 +97,7 @@ public:
 private:
 
 	// Events
-	static NTSTATUS OpenEvents()
+	__forceinline static NTSTATUS OpenEvents()
 	{
 		Event = IoCreateNotificationEvent(&EventName, &EventHandle);
 		if (!Event)
@@ -119,7 +119,7 @@ private:
 	}
 
 	// Packet handler thread	
-	static void Handler(void* Context) 
+	__forceinline static void Handler(void* Context)
 	{
 		PEPROCESS TargetProcess{};
 		shared_data* Data = reinterpret_cast<shared_data*>(MappedBase);
@@ -132,8 +132,8 @@ private:
 
 		while (true)
 		{
-			KeWaitForSingleObject(Event, Executive, KernelMode, FALSE, nullptr);
-			KeClearEvent(Event);
+			ret::spoof_call(&KeWaitForSingleObject, (PVOID)Event, (KWAIT_REASON)Executive, (KPROCESSOR_MODE)KernelMode, (BOOLEAN)FALSE, (PLARGE_INTEGER)nullptr);
+			ret::spoof_call(&KeClearEvent, (PRKEVENT)Event);
 
 			if (Data->type == comm_type::none)
 			{
@@ -148,7 +148,7 @@ private:
 					printf("Failed to initialize\n");
 					goto DESTROY_AND_CLEANUP;
 				}
-				KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+				ret::spoof_call(&KeSetEvent, (PRKEVENT)EventResponse, (KPRIORITY)IO_NO_INCREMENT, (BOOLEAN)FALSE);
 				continue;
 			}
 
@@ -159,11 +159,11 @@ private:
 					ExFreePool(CachePool);
 				}
 
-				CachePool = ExAllocatePool(NonPagedPoolNx, Data->size);
+				CachePool = ret::spoof_call(&ExAllocatePool, (POOL_TYPE)NonPagedPoolNx, (SIZE_T)Data->size);
 				if (!CachePool)
 				{
 					printf("Failed to allocate pool\n");
-					KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+					ret::spoof_call(&KeSetEvent, (PRKEVENT)EventResponse, (KPRIORITY)IO_NO_INCREMENT, (BOOLEAN)FALSE);
 					continue;
 				}
 
@@ -171,11 +171,11 @@ private:
 				printf("Allocated new cache pool: 0x%p\n", CachePool);
 			}
 
-			NTSTATUS Status = PsLookupProcessByProcessId(reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
+			NTSTATUS Status = ret::spoof_call(&PsLookupProcessByProcessId, reinterpret_cast<HANDLE>(Data->process_id), &TargetProcess);
 			if (!NT_SUCCESS(Status))
 			{
 				printf("Failed to lookup process by process id: 0x%X\n", Status);
-				KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+				ret::spoof_call(&KeSetEvent, (PRKEVENT)EventResponse, (KPRIORITY)IO_NO_INCREMENT, (BOOLEAN)FALSE);
 				continue;
 			}
 
@@ -184,7 +184,7 @@ private:
 				case comm_type::cr3:
 				{
 					printf("Received cr3\n");
-					const auto BaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(TargetProcess));
+					const auto BaseAddress = reinterpret_cast<uint64>(ret::spoof_call(&PsGetProcessSectionBaseAddress, TargetProcess));
 					if (!BaseAddress)
 					{
 						printf("Failed to get base address\n");
@@ -204,7 +204,7 @@ private:
 				case comm_type::base:
 				{
 					printf("Received base\n");
-					const auto BaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(TargetProcess));
+					const auto BaseAddress = reinterpret_cast<uint64>(ret::spoof_call(&PsGetProcessSectionBaseAddress, TargetProcess));
 					if (!BaseAddress)
 					{
 						printf("Failed to get base address\n");
@@ -260,18 +260,18 @@ private:
 				}
 			}
 
-			KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+			ret::spoof_call(&KeSetEvent, (PRKEVENT)EventResponse, (KPRIORITY)IO_NO_INCREMENT, (BOOLEAN)FALSE);
 		}
 
 DESTROY_AND_CLEANUP:
 		printf("Exiting thread\n");
-		KeSetEvent(EventResponse, IO_NO_INCREMENT, FALSE);
+		ret::spoof_call(&KeSetEvent, (PRKEVENT)EventResponse, (KPRIORITY)IO_NO_INCREMENT, (BOOLEAN)FALSE);
 		Cleanup();
-		PsTerminateSystemThread(STATUS_SUCCESS);
+		ret::spoof_call(&PsTerminateSystemThread, STATUS_SUCCESS);
 	}
 
 	// Init for client
-	static bool Init(shared_data* Data)
+	__forceinline static bool Init(shared_data* Data)
 	{
 		ClientPID = reinterpret_cast<HANDLE>(Data->process_id);
 		printf("Client PID: 0x%X\n", ClientPID);
@@ -281,7 +281,7 @@ DESTROY_AND_CLEANUP:
 			return false;
 		}
 
-		Status = PsLookupProcessByProcessId(ClientPID, &ClientProcess);
+		Status = ret::spoof_call(&PsLookupProcessByProcessId, ClientPID, &ClientProcess);
 		if (!NT_SUCCESS(Status))
 		{
 			printf("Failed to lookup client by process id: 0x%X\n", Status);
@@ -290,7 +290,7 @@ DESTROY_AND_CLEANUP:
 
 		printf("Client process: 0x%p\n", ClientProcess);
 
-		ClientBaseAddress = reinterpret_cast<uint64>(PsGetProcessSectionBaseAddress(ClientProcess));
+		ClientBaseAddress = reinterpret_cast<uint64>(ret::spoof_call(&PsGetProcessSectionBaseAddress, ClientProcess));
 		printf("Client base address: 0x%p\n", ClientBaseAddress);
 		if (!ClientBaseAddress)
 		{
@@ -309,36 +309,36 @@ DESTROY_AND_CLEANUP:
 	}
 
 	// Cleanup
-	static void Cleanup()
+	__forceinline static void Cleanup()
 	{
 		if (SectionHandle)
 		{
-			ZwClose(SectionHandle);
+			ret::spoof_call(&ZwClose, SectionHandle);
 		}
 
 		if (MappedBase)
 		{
-			MmUnmapViewInSystemSpace(MappedBase);
+			ret::spoof_call(&MmUnmapViewInSystemSpace, MappedBase);
 		}
 
 		if (EventHandle)
 		{
-			ZwClose(EventHandle);
+			ret::spoof_call(&ZwClose, EventHandle);
 		}
 
 		if (EventResponseHandle)
 		{
-			ZwClose(EventResponseHandle);
+			ret::spoof_call(&ZwClose, EventResponseHandle);
 		}
 
 		if (CachePool)
 		{
-			ExFreePool(CachePool);
+			ret::spoof_call(&ExFreePool, CachePool);
 		}
 
 		if (ClientProcess)
 		{
-			ObfDereferenceObject(ClientProcess);
+			ret::spoof_call(&ObfDereferenceObject, (PVOID)ClientProcess);
 		}
 	}
 

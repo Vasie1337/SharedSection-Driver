@@ -6,9 +6,9 @@ namespace hide::thread
 	typedef void* (__fastcall* tLookUpHandle)(void*, HANDLE);
 	typedef long long(__fastcall* tDestoyHandle)(void*, void*, void*);
 
-	inline bool ClearPspCidTable(PETHREAD _Thread)
+	__forceinline bool ClearPspCidTable(PETHREAD _Thread)
 	{
-		const auto mod = modules::get_kernel_module("ntoskrnl.exe");
+		const auto mod = modules::get_kernel_module(skCrypt("ntoskrnl.exe"));
 		if (!mod)
 		{
 			printf("Failed to get ntoskrnl.exe\n");
@@ -64,7 +64,7 @@ namespace hide::thread
 		return true;
 	}
 
-	inline void SwapThreadValues(PETHREAD _Current, PETHREAD _Target)
+	__forceinline void SwapThreadValues(PETHREAD _Current, PETHREAD _Target)
 	{
 		const auto Current = reinterpret_cast<uint64>(_Current);
 		const auto Target = reinterpret_cast<uint64>(_Target);
@@ -73,7 +73,7 @@ namespace hide::thread
 		*(void**)(Current + hide::offsets::Win32StartAddress) = *(void**)(Target + hide::offsets::Win32StartAddress);
 	}
 
-	inline bool IsAdressOutsideModulelist(uint64 Address)
+	__forceinline bool IsAdressOutsideModulelist(uint64 Address)
 	{
 		if (!Address)
 			return true;
@@ -94,7 +94,7 @@ namespace hide::thread
 		return true;
 	}
 
-	inline PETHREAD GetValidThread()
+	__forceinline PETHREAD GetValidThread()
 	{
 		for (ULONG ThreadID = 4; ThreadID < 0xFFFF; ThreadID += 4)
 		{
@@ -135,7 +135,7 @@ namespace hide::thread
 		return 0;
 	}
 
-	inline bool Hide()
+	__forceinline bool Hide()
 	{
 		const auto Thread = reinterpret_cast<uint64>(PsGetCurrentThread());
 		if (!Thread)
@@ -150,7 +150,7 @@ namespace hide::thread
 		
 		printf("Spoofed thread values\n");
 
-		//if (!ClearPspCidTable(_Thread))
+		//if (!ClearPspCidTable(PsGetCurrentThread()))
 		//{
 		//	printf("Failed to clear PspCidTable\n");
 		//	return false;
@@ -168,8 +168,6 @@ namespace hide::thread
 		SwapThreadValues(PsGetCurrentThread(), ValidThread);
 
 		printf("Swapped thread values\n");
-
-		printf("Hid thread\n");
 
 		return true;
 	}

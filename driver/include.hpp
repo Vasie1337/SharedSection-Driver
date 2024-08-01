@@ -16,6 +16,8 @@
 #include <defs.hpp>
 #include <shared.hpp>
 
+#include <hide/strings.hpp>
+
 #include <kernel/nt.hpp>
 #include <kernel/crt.hpp>
 #include <kernel/scanner.hpp>
@@ -24,8 +26,7 @@
 #include <hide/offsets.hpp>
 #include <hide/thread.hpp>
 #include <hide/pfn.hpp>
-
-#include <hide/callout/callout.hpp>
+#include <hide/ret.hpp>
 
 #include <kernel/physical/physical.hpp>
 #include <kernel/physical/cr3.hpp>

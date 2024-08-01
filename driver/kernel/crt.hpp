@@ -151,6 +151,4 @@ namespace crt
 
 		return 0;
 	}
-
-
 }

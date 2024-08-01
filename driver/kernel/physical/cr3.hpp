@@ -5,7 +5,7 @@ namespace physical::cr3
 {
 	inline uint64 StoredCr3 = 0;
 
-	inline uint64 GetFromBase(uint64 Base)
+	__forceinline uint64 GetFromBase(uint64 Base)
 	{
 		if (!Base)
 		{
@@ -16,14 +16,14 @@ namespace physical::cr3
 		VirtualAddress VirtualAddress = { 0 };
 		VirtualAddress.Value = Base;
 
-		PPHYSICAL_MEMORY_RANGE Ranges = MmGetPhysicalMemoryRanges();
+		PPHYSICAL_MEMORY_RANGE Ranges = ret::spoof_call(&MmGetPhysicalMemoryRanges);
 		if (!Ranges)
 		{
 			printf("Failed to get physical memory ranges\n");
 			return 0;
 		}
 
-		void* Buffer = ExAllocatePool(NonPagedPoolNx, PAGE_SIZE);
+		void* Buffer = ret::spoof_call(&ExAllocatePool, (POOL_TYPE)NonPagedPoolNx, (SIZE_T)PAGE_SIZE);
 		if (!Buffer)
 		{
 			printf("Failed to allocate buffer\n");
@@ -93,14 +93,14 @@ namespace physical::cr3
 						continue;
 					}
 
-					ExFreePoolWithTag(Buffer, 0);
+					ret::spoof_call(&ExFreePoolWithTag, Buffer, (ULONG)0);
 					return PhysicalAddr;
 				}
 			}
 		}
 
 		printf("Failed to find CR3\n");
-		ExFreePoolWithTag(Buffer, 0);
+		ret::spoof_call(&ExFreePoolWithTag, Buffer, (ULONG)0);
 		return 0;
 	}
 }
